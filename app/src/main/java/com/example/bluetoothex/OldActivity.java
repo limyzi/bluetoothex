@@ -7,12 +7,15 @@ import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemClock;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -46,14 +49,15 @@ public class OldActivity extends AppCompatActivity {
     BluetoothDevice bluetoothDevice;
     BluetoothSocket bluetoothSocket;
 
-    
+    OutputStream mOutputStream;
+    InputStream mInputStream;
 
     final static int BT_REQUEST_ENABLE = 1;
     final static int BT_MESSAGE_READ = 2;
     final static int BT_CONNECTING_STATUS = 3;
     final static UUID BT_UUID = UUID.fromString("8CE255C0-200A-11E0-AC64-0800200C9A66");
+    //final static UUID BT_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
-    @SuppressLint("HandlerLeak")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -105,8 +109,12 @@ public class OldActivity extends AppCompatActivity {
                 if(msg.what == BT_MESSAGE_READ){
                     String readMessage = null;
                     try {
+                        Log.i("test", msg.toString());
                         readMessage = new String((byte[]) msg.obj, "UTF-8");
+                        mOutputStream.write(readMessage.getBytes());
                     } catch (UnsupportedEncodingException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
                         e.printStackTrace();
                     }
                     receive.setText(readMessage);
@@ -159,8 +167,22 @@ public class OldActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
     }
 
+    private final BroadcastReceiver receiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+                // Discovery has found a device. Get the BluetoothDevice
+                // object and its info from the Intent.
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                String deviceName = device.getName();
+                String deviceHardwareAddress = device.getAddress(); // MAC address
+            }
+        }
+    };
+
     void pairedDevices(){
         if (bluetoothAdapter.isEnabled()) {
+            pairedDevice = bluetoothAdapter.getBondedDevices();
             if (pairedDevice.size() > 0) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle("장치 선택");
@@ -198,13 +220,15 @@ public class OldActivity extends AppCompatActivity {
             }
         }
         try {
-            bluetoothSocket = bluetoothDevice.createRfcommSocketToServiceRecord(BT_UUID);
+            bluetoothSocket = bluetoothDevice.createInsecureRfcommSocketToServiceRecord(BT_UUID);
             bluetoothSocket.connect();
             connectedBluetoothThread = new ConnectedBluetoothThread(bluetoothSocket);
             //connectedBluetoothThread.
             bluetoothHandler.obtainMessage(BT_CONNECTING_STATUS, 1, -1).sendToTarget();
         } catch (IOException e) {
+            Log.i("test",e.toString());
             Toast.makeText(getApplicationContext(), "블루투스 연결 중 오류가 발생했습니다.", Toast.LENGTH_LONG).show();
+
         }
     }
 
