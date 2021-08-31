@@ -23,6 +23,7 @@ import androidx.core.app.ActivityCompat;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Set;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
     // Get permission
@@ -35,12 +36,16 @@ public class MainActivity extends AppCompatActivity {
     Button btnParied, btnSearch, btnSend;
     ListView listView;
 
-    BluetoothAdapter btAdapter =  BluetoothAdapter.getDefaultAdapter();;
+    BluetoothAdapter btAdapter;
     Set<BluetoothDevice> pairedDevices;
     ArrayAdapter<String> btArrayAdapter;
     ArrayList<String> deviceAddressArray;
 
+    BluetoothSocket btSocket;
+    ConnectedThread connectedThread;
+
     private final static int REQUEST_ENABLE_BT = 1;
+    final static UUID BT_UUID = UUID.fromString("8CE255C0-200A-11E0-AC64-0800200C9A66");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
         ActivityCompat.requestPermissions(MainActivity.this, permission_list,  1);
 
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_old);
+        setContentView(R.layout.activity_main);
 
         //블루투스 활성화하기
         btAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -57,7 +62,6 @@ public class MainActivity extends AppCompatActivity {
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }
 
-        출처: https://yeolco.tistory.com/80 [열코의 프로그래밍 일기]
         textStatus = (TextView) findViewById(R.id.text_status);
         btnParied = (Button) findViewById(R.id.btn_paired);
         btnSearch = (Button) findViewById(R.id.btn_search);
@@ -137,10 +141,7 @@ public class MainActivity extends AppCompatActivity {
         unregisterReceiver(receiver);
     }
 
-
     public class myOnItemClickListener implements AdapterView.OnItemClickListener {
-        BluetoothSocket btSocket;
-        ConnectedThread connectedThread;
 
         @Override
         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -154,8 +155,10 @@ public class MainActivity extends AppCompatActivity {
             BluetoothDevice device = btAdapter.getRemoteDevice(address);
 
             try{
-                //btSocket = createBluetoothSocket(device);
-                btSocket.connect();
+                btSocket = device.createInsecureRfcommSocketToServiceRecord(BT_UUID);
+                if(!btSocket.isConnected()){
+                    btSocket.connect();
+                }
             }catch (IOException e){
                 flag = false;
                 textStatus.setText("connection failed!");
@@ -169,9 +172,9 @@ public class MainActivity extends AppCompatActivity {
 
         }
 
-        public void onClickButtonSend(View view){
-            if(connectedThread!=null){ connectedThread.write("a"); }
-        }
+    }
+    public void onClickButtonSend(View view){
+        if(connectedThread!=null){ connectedThread.write("a"); }
     }
 
 }
