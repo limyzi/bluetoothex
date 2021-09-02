@@ -133,14 +133,6 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-
-        // Don't forget to unregister the ACTION_FOUND receiver.
-        unregisterReceiver(receiver);
-    }
-
     public class myOnItemClickListener implements AdapterView.OnItemClickListener {
 
         @Override
