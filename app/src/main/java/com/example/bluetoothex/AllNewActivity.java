@@ -36,13 +36,16 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @TargetApi(21)
@@ -56,9 +59,9 @@ public class AllNewActivity extends AppCompatActivity {
     private List<ScanFilter> filterList;
     private BluetoothGatt gatt;
 
-    private List<BluetoothDevice> devices = new ArrayList<>(); // 블루투스 디바이스 데이터 셋
-    private BluetoothDevice bluetoothDevice; // 블루투스 디바이스
-    List<String> listPairedDevice = new ArrayList<>();
+//    private List<BluetoothDevice> devices = new ArrayList<>(); // 블루투스 디바이스 데이터 셋
+//    private BluetoothDevice bluetoothDevice; // 블루투스 디바이스
+    List<Map<String, Object>> listPairedDevice = new ArrayList<>();
 
 //    private TextView textViewReceive; // 수신 된 데이터를 표시하기 위한 텍스트 뷰
 //    private EditText editTextSend; // 송신 할 데이터를 작성하기 위한 에딧 텍스트
@@ -116,7 +119,9 @@ public class AllNewActivity extends AppCompatActivity {
         connectableList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                connectBluetoothDevice(adapter.getItem(position).toString());
+               // connectBluetoothDevice(adapter.getItem(position).toString());
+                Map<String, Object> info = (Map<String, Object>) adapter.getItem(position);
+                connectToDevice((BluetoothDevice) info.get("device"));
             }
         });
 
@@ -177,14 +182,14 @@ public class AllNewActivity extends AppCompatActivity {
     }
 
     //디바이스 선택연결
-    public void connectBluetoothDevice(String name){
-        for (BluetoothDevice tempDevice : devices) {
-            if (name.equals(tempDevice.getName()) || name.equals(tempDevice.getAddress())) {
-                connectToDevice(tempDevice);
-                break;
-            }
-        }
-    }
+//    public void connectBluetoothDevice(String name){
+//        for (BluetoothDevice tempDevice : devices) {
+//            if (name.equals(tempDevice.getName()) || name.equals(tempDevice.getAddress())) {
+//                connectToDevice(tempDevice);
+//                break;
+//            }
+//        }
+//    }
 
     //스캔
     private void scanLeDevice(final boolean enable){
@@ -197,14 +202,6 @@ public class AllNewActivity extends AppCompatActivity {
                     }else{
                         leScanner.stopScan(scanCallback);
                     }
-
-                    Log.i("selectBluetoothDevice: ", devices.toString());
-                     for (BluetoothDevice device : devices) {
-                        listPairedDevice.add(device.getName()!=null?device.getName():device.getAddress());
-                    }
-                    listPairedDevice.add("cancel");
-                    adapter = new ArrayAdapter(AllNewActivity.this, android.R.layout.simple_list_item_1, listPairedDevice);
-                    connectableList.setAdapter(adapter);
                 }
             }, SCAN_PERIOD);
             if(Build.VERSION.SDK_INT < 21){
@@ -231,7 +228,14 @@ public class AllNewActivity extends AppCompatActivity {
             Log.i("result", result.toString());
             //le아닐때 연결하는건갑네
             BluetoothDevice btDevice = result.getDevice();
-            devices.add(btDevice);
+
+            Map<String, Object> deviceinfo = new HashMap<>();
+            deviceinfo.put("name",btDevice.getName());
+            deviceinfo.put("address", btDevice.getAddress());
+            deviceinfo.put("device", btDevice);
+            listPairedDevice.add(deviceinfo);
+            adapter = new ArrayAdapter(AllNewActivity.this, android.R.layout.simple_list_item_1, listPairedDevice);
+            connectableList.setAdapter(adapter);
         }
 
         @Override
@@ -257,7 +261,7 @@ public class AllNewActivity extends AppCompatActivity {
                 @Override
                 public void run() {
                     Log.i("onLeScan",device.toString());
-                    devices.add(device);
+                    //devices.add(device);
                 }
             });
         }
@@ -265,16 +269,19 @@ public class AllNewActivity extends AppCompatActivity {
 
     //연결
     public void connectToDevice(BluetoothDevice device){
-        if(gatt == null ){
-            gatt = device.connectGatt(this, false, gattCallback);
-            connectStatus.setText("connected");
-        }
+        gatt = device.connectGatt(this, false, gattCallback);
+        connectStatus.setText("connected");
     }
 
     //연결해제
     public void disconnect(){
         gatt.disconnect();
-        gatt.close();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                gatt.close();
+            }
+        },1000);
         connectStatus.setText("disconnected");
     }
 
@@ -302,19 +309,13 @@ public class AllNewActivity extends AppCompatActivity {
             super.onServicesDiscovered(gatt, status);
             List<BluetoothGattService> services = gatt.getServices();
             Log.i("onServicesDiscovered", services.toString());
-            gatt.readCharacteristic(services.get(0).getCharacteristics().get(0));
+            gatt.readCharacteristic(services.get(1).getCharacteristics().get(0));
         }
 
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicRead(gatt, characteristic, status);
-            Log.i("onCharacteristicRead", characteristic.toString());
+            Log.i("onCharacteristicRead", characteristic.getUuid().toString());
         }
     };
-
-    public void readCharacteristic(BluetoothGattCharacteristic characteristic){
-
-    }
-
-
 }
